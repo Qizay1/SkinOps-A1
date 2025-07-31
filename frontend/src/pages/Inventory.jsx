@@ -16,10 +16,10 @@ import {
   Filter,
   DollarSign,
   ArrowUpDown,
-  Lock,
-  Unlock
+  Share2,
+  Star
 } from 'lucide-react';
-import { mockInventory, getRarityColor } from '../mock';
+import { mockInventory, getRarityColor, gameConfigs } from '../mock';
 import { useToast } from '../hooks/use-toast';
 
 const Inventory = () => {
@@ -32,7 +32,7 @@ const Inventory = () => {
   const handleSellItem = (item) => {
     toast({
       title: "Item Sold!",
-      description: `You sold ${item.name} for $${item.value}!`,
+      description: `You sold ${item.name} for ${item.value}₽!`,
     });
   };
 
@@ -52,7 +52,7 @@ const Inventory = () => {
     
     toast({
       title: "Items Sold!",
-      description: `You sold ${selectedItems.length} items for $${totalValue.toFixed(2)}!`,
+      description: `You sold ${selectedItems.length} items for ${totalValue.toFixed(2)}₽!`,
     });
     setSelectedItems([]);
   };
@@ -63,7 +63,8 @@ const Inventory = () => {
       const matchesFilter = filterBy === 'all' || 
         (filterBy === 'tradeable' && item.tradeable) ||
         (filterBy === 'non-tradeable' && !item.tradeable) ||
-        item.rarity === filterBy;
+        item.rarity === filterBy ||
+        item.game === filterBy;
       return matchesSearch && matchesFilter;
     })
     .sort((a, b) => {
@@ -72,6 +73,7 @@ const Inventory = () => {
         case 'value-low': return a.value - b.value;
         case 'name': return a.name.localeCompare(b.name);
         case 'rarity': return a.rarity.localeCompare(b.rarity);
+        case 'date': return new Date(b.obtainedDate) - new Date(a.obtainedDate);
         default: return 0;
       }
     });
@@ -82,21 +84,46 @@ const Inventory = () => {
     return sum + (item ? item.value : 0);
   }, 0);
 
+  const gameStats = mockInventory.reduce((stats, item) => {
+    if (!stats[item.game]) {
+      stats[item.game] = { count: 0, value: 0 };
+    }
+    stats[item.game].count++;
+    stats[item.game].value += item.value;
+    return stats;
+  }, {});
+
   return (
-    <div className="min-h-screen bg-gray-900 py-8">
+    <div className="min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">Inventory</h1>
-              <p className="text-gray-400">Manage your skins and items</p>
+              <h1 className="text-3xl font-bold text-white mb-2">
+                My <span className="text-orange-400">Inventory</span>
+              </h1>
+              <p className="text-gray-400">Manage your skins and items from all games</p>
             </div>
             <div className="mt-4 md:mt-0 text-right">
-              <div className="text-2xl font-bold text-green-400">${totalValue.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-orange-400">{totalValue.toFixed(2)}₽</div>
               <div className="text-gray-400 text-sm">{mockInventory.length} items total</div>
             </div>
           </div>
+        </div>
+
+        {/* Game Statistics */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+          {Object.entries(gameStats).map(([game, stats]) => (
+            <Card key={game} className="bg-gray-800 border-gray-700">
+              <CardContent className="p-4 text-center">
+                <div className="text-2xl mb-2">{gameConfigs[game]?.mascot}</div>
+                <div className="text-sm text-gray-400 mb-1">{gameConfigs[game]?.name}</div>
+                <div className="text-lg font-bold text-orange-400">{stats.value.toFixed(0)}₽</div>
+                <div className="text-xs text-gray-500">{stats.count} items</div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         {/* Filters and Selection */}
@@ -121,6 +148,7 @@ const Inventory = () => {
                 <SelectItem value="value-low">Value: Low to High</SelectItem>
                 <SelectItem value="name">Name A-Z</SelectItem>
                 <SelectItem value="rarity">Rarity</SelectItem>
+                <SelectItem value="date">Date Obtained</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filterBy} onValueChange={setFilterBy}>
@@ -132,6 +160,10 @@ const Inventory = () => {
                 <SelectItem value="all">All Items</SelectItem>
                 <SelectItem value="tradeable">Tradeable</SelectItem>
                 <SelectItem value="non-tradeable">Non-tradeable</SelectItem>
+                <SelectItem value="csgo">CS:GO</SelectItem>
+                <SelectItem value="minecraft">Minecraft</SelectItem>
+                <SelectItem value="valorant">Valorant</SelectItem>
+                <SelectItem value="legendary+">Legendary+</SelectItem>
                 <SelectItem value="mythical">Mythical</SelectItem>
                 <SelectItem value="legendary">Legendary</SelectItem>
                 <SelectItem value="rare">Rare</SelectItem>
@@ -145,7 +177,7 @@ const Inventory = () => {
             <div className="flex items-center justify-between bg-gray-700 rounded-lg p-4">
               <div className="text-white">
                 <span className="font-semibold">{selectedItems.length}</span> items selected
-                <span className="text-green-400 ml-4 font-semibold">${selectedValue.toFixed(2)}</span>
+                <span className="text-orange-400 ml-4 font-semibold">{selectedValue.toFixed(2)}₽</span>
               </div>
               <div className="flex space-x-2">
                 <Button 
@@ -154,7 +186,7 @@ const Inventory = () => {
                   onClick={() => setSelectedItems([])}
                   className="border-gray-600 text-gray-300 hover:bg-gray-600"
                 >
-                  Clear Selection
+                  Clear
                 </Button>
                 <Button 
                   size="sm"
@@ -170,12 +202,12 @@ const Inventory = () => {
         </div>
 
         {/* Inventory Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
           {filteredInventory.map((item) => (
             <Card 
               key={item.id} 
-              className={`bg-gray-800 border-gray-700 hover:border-blue-500 transition-colors cursor-pointer ${
-                selectedItems.includes(item.id) ? 'ring-2 ring-blue-500 border-blue-500' : ''
+              className={`bg-gray-800 border-gray-700 hover:border-orange-500 transition-colors cursor-pointer ${
+                selectedItems.includes(item.id) ? 'ring-2 ring-orange-500 border-orange-500' : ''
               }`}
               onClick={() => handleSelectItem(item.id)}
             >
@@ -184,23 +216,26 @@ const Inventory = () => {
                   <img 
                     src={item.image} 
                     alt={item.name}
-                    className="w-full h-32 object-cover rounded"
+                    className="w-full h-24 object-cover rounded"
                   />
                   <div className="absolute top-2 right-2">
-                    <Badge className="bg-green-500 text-white text-xs">
-                      ${item.value}
+                    <Badge className="bg-orange-500 text-white text-xs">
+                      {item.value}₽
                     </Badge>
                   </div>
                   <div className="absolute top-2 left-2">
-                    {item.tradeable ? (
-                      <Unlock className="w-4 h-4 text-green-400" />
-                    ) : (
-                      <Lock className="w-4 h-4 text-red-400" />
-                    )}
+                    <div className="text-lg" title={gameConfigs[item.game]?.name}>
+                      {gameConfigs[item.game]?.mascot}
+                    </div>
+                  </div>
+                  <div className="absolute bottom-2 left-2">
+                    <Badge variant="outline" className={`${getRarityColor(item.rarity)} text-xs`}>
+                      {item.rarity}
+                    </Badge>
                   </div>
                   {selectedItems.includes(item.id) && (
-                    <div className="absolute inset-0 bg-blue-500/20 rounded flex items-center justify-center">
-                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                    <div className="absolute inset-0 bg-orange-500/20 rounded flex items-center justify-center">
+                      <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
                         <span className="text-white text-sm">✓</span>
                       </div>
                     </div>
@@ -209,27 +244,43 @@ const Inventory = () => {
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="space-y-2">
-                  <h3 className={`font-medium text-sm ${getRarityColor(item.rarity)} truncate`}>
+                  <h3 className="font-medium text-white text-sm truncate">
                     {item.name}
                   </h3>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-gray-400 capitalize">{item.rarity}</span>
+                    <span className="text-gray-400">{gameConfigs[item.game]?.name}</span>
                     <span className={`${item.tradeable ? 'text-green-400' : 'text-red-400'}`}>
                       {item.tradeable ? 'Tradeable' : 'Locked'}
                     </span>
                   </div>
-                  <Button 
-                    size="sm" 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSellItem(item);
-                    }}
-                    disabled={!item.tradeable}
-                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed"
-                  >
-                    <DollarSign className="w-3 h-3 mr-1" />
-                    Sell
-                  </Button>
+                  <div className="text-xs text-gray-500">
+                    From: {item.obtainedFrom}
+                  </div>
+                  <div className="flex space-x-1">
+                    <Button 
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSellItem(item);
+                      }}
+                      disabled={!item.tradeable}
+                      className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-xs"
+                    >
+                      <DollarSign className="w-3 h-3 mr-1" />
+                      Sell
+                    </Button>
+                    <Button 
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toast({ title: "Shared!", description: "Item shared with community!" });
+                      }}
+                      className="border-gray-600 text-gray-300 hover:bg-gray-700 text-xs px-2"
+                    >
+                      <Share2 className="w-3 h-3" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
