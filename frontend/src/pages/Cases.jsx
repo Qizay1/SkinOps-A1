@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -14,47 +15,85 @@ import {
   Package, 
   Search, 
   Filter,
-  Star,
-  Eye
+  Eye,
+  ArrowLeft
 } from 'lucide-react';
-import { mockCases, getRarityColor } from '../mock';
-import { useToast } from '../hooks/use-toast';
+import { allCases, allCasesFlat, gameConfigs, getRarityColor } from '../mock';
 
 const Cases = () => {
+  const { gameId } = useParams();
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('name');
+  const [sortBy, setSortBy] = useState('price-low');
+  const [filterRarity, setFilterRarity] = useState('all');
   const [selectedCase, setSelectedCase] = useState(null);
-  const { toast } = useToast();
 
-  const handleOpenCase = (caseItem) => {
-    // Simulate case opening with random item
-    const randomItem = caseItem.items[Math.floor(Math.random() * caseItem.items.length)];
-    toast({
-      title: "Case Opened!",
-      description: `You got: ${randomItem.name} worth $${randomItem.value}!`,
+  // Get cases based on route - specific game or all cases
+  const cases = gameId && allCases[gameId] ? allCases[gameId] : allCasesFlat;
+  const currentGame = gameId ? gameConfigs[gameId] : null;
+
+  const filteredCases = cases
+    .filter(caseItem => {
+      const matchesSearch = caseItem.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesRarity = filterRarity === 'all' || caseItem.rarity === filterRarity;
+      return matchesSearch && matchesRarity;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'price-low': return a.price - b.price;
+        case 'price-high': return b.price - a.price;
+        case 'name': return a.name.localeCompare(b.name);
+        case 'rarity': return a.rarity.localeCompare(b.rarity);
+        default: return 0;
+      }
     });
-  };
 
   const handlePreviewCase = (caseItem) => {
     setSelectedCase(caseItem);
   };
 
-  const filteredCases = mockCases.filter(caseItem =>
-    caseItem.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   return (
-    <div className="min-h-screen bg-gray-900 py-8">
+    <div className="min-h-screen py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Cases</h1>
-          <p className="text-gray-400">Open cases and discover rare skins and items</p>
+          {currentGame && (
+            <div className="flex items-center mb-4">
+              <Link to="/games">
+                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to Games
+                </Button>
+              </Link>
+            </div>
+          )}
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              {currentGame && (
+                <div className="text-4xl">{currentGame.mascot}</div>
+              )}
+              <div>
+                <h1 className="text-3xl font-bold text-white">
+                  {currentGame ? `${currentGame.name} Cases` : 'All Cases'}
+                </h1>
+                <p className="text-gray-400">
+                  {currentGame 
+                    ? `Discover ${currentGame.name} skins and items`
+                    : 'Browse cases from all supported games'
+                  }
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-orange-400">{filteredCases.length}</div>
+              <div className="text-gray-400 text-sm">Cases Available</div>
+            </div>
+          </div>
         </div>
 
         {/* Filters */}
         <div className="bg-gray-800 rounded-lg p-6 mb-8">
-          <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex flex-col lg:flex-row gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
@@ -65,63 +104,85 @@ const Cases = () => {
               />
             </div>
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-full md:w-48 bg-gray-700 border-gray-600 text-white">
+              <SelectTrigger className="w-full lg:w-48 bg-gray-700 border-gray-600 text-white">
                 <Filter className="w-4 h-4 mr-2" />
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent className="bg-gray-700 border-gray-600">
-                <SelectItem value="name">Name</SelectItem>
                 <SelectItem value="price-low">Price: Low to High</SelectItem>
                 <SelectItem value="price-high">Price: High to Low</SelectItem>
-                <SelectItem value="popular">Most Popular</SelectItem>
+                <SelectItem value="name">Name A-Z</SelectItem>
+                <SelectItem value="rarity">Rarity</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterRarity} onValueChange={setFilterRarity}>
+              <SelectTrigger className="w-full lg:w-48 bg-gray-700 border-gray-600 text-white">
+                <SelectValue placeholder="Filter by rarity" />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-700 border-gray-600">
+                <SelectItem value="all">All Rarities</SelectItem>
+                <SelectItem value="common">Common</SelectItem>
+                <SelectItem value="rare">Rare</SelectItem> 
+                <SelectItem value="legendary">Legendary</SelectItem>
+                <SelectItem value="mythical">Mythical</SelectItem>
+                <SelectItem value="legendary+">Legendary+</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
 
         {/* Cases Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
           {filteredCases.map((caseItem) => (
-            <Card key={caseItem.id} className="bg-gray-800 border-gray-700 hover:border-purple-500 transition-colors group">
+            <Card key={caseItem.id} className="bg-gray-800 border-gray-700 hover:border-orange-500 transition-colors group">
               <CardHeader className="pb-3">
                 <div className="relative overflow-hidden rounded-lg">
                   <img 
                     src={caseItem.image} 
                     alt={caseItem.name}
-                    className="w-full h-40 object-cover group-hover:scale-105 transition-transform"
+                    className="w-full h-32 object-cover group-hover:scale-105 transition-transform"
                   />
                   <div className="absolute top-2 right-2">
-                    <Badge className="bg-green-500 text-white font-semibold">
-                      ${caseItem.price}
+                    <Badge className="bg-orange-500 text-white font-semibold">
+                      {caseItem.price.toLocaleString()}₽
                     </Badge>
                   </div>
                   <div className="absolute top-2 left-2">
-                    <Badge variant="secondary" className="bg-gray-900/80 text-white">
-                      {caseItem.items.length} items
+                    {!currentGame && (
+                      <div className="text-xl" title={gameConfigs[caseItem.game]?.name}>
+                        {gameConfigs[caseItem.game]?.mascot}
+                      </div>
+                    )}
+                  </div>
+                  <div className="absolute bottom-2 left-2">
+                    <Badge variant="outline" className={getRarityColor(caseItem.rarity)}>
+                      {caseItem.rarity}
                     </Badge>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3">
                 <div>
-                  <CardTitle className="text-lg text-white mb-1">{caseItem.name}</CardTitle>
-                  <p className="text-gray-400 text-sm">Contains rare and valuable skins</p>
+                  <CardTitle className="text-sm text-white mb-1 truncate">{caseItem.name}</CardTitle>
+                  {!currentGame && (
+                    <p className="text-xs text-gray-400">{gameConfigs[caseItem.game]?.name}</p>
+                  )}
                 </div>
 
-                {/* Preview of items */}
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-400">Featured Items:</p>
+                {/* Item Preview */}
+                <div className="space-y-1">
+                  <p className="text-xs text-gray-400">Contains {caseItem.items.length} items:</p>
                   <div className="space-y-1">
                     {caseItem.items.slice(0, 2).map((item, index) => (
                       <div key={index} className="flex items-center justify-between text-xs">
-                        <span className={`${getRarityColor(item.rarity)} truncate max-w-[120px]`}>
+                        <span className={`${getRarityColor(item.rarity)} truncate max-w-[80px]`}>
                           {item.name}
                         </span>
-                        <span className="text-green-400 font-medium">${item.value}</span>
+                        <span className="text-orange-400 font-medium">{item.value}₽</span>
                       </div>
                     ))}
                     {caseItem.items.length > 2 && (
-                      <p className="text-xs text-gray-500">+{caseItem.items.length - 2} more items</p>
+                      <p className="text-xs text-gray-500">+{caseItem.items.length - 2} more</p>
                     )}
                   </div>
                 </div>
@@ -134,30 +195,46 @@ const Cases = () => {
                     size="sm"
                     className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-700"
                   >
-                    <Eye className="w-4 h-4 mr-1" />
+                    <Eye className="w-3 h-3 mr-1" />
                     Preview
                   </Button>
-                  <Button 
-                    onClick={() => handleOpenCase(caseItem)}
-                    size="sm"
-                    className="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700"
-                  >
-                    <Package className="w-4 h-4 mr-1" />
-                    Open
-                  </Button>
+                  <Link to={`/case/${caseItem.id}`} className="flex-1">
+                    <Button 
+                      size="sm"
+                      className="w-full bg-orange-500 hover:bg-orange-600"
+                    >
+                      <Package className="w-3 h-3 mr-1" />
+                      Open
+                    </Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
 
+        {/* No Results */}
+        {filteredCases.length === 0 && (
+          <div className="text-center py-12">
+            <Package className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-400 mb-2">No cases found</h3>
+            <p className="text-gray-500">Try adjusting your search or filter criteria</p>
+          </div>
+        )}
+
         {/* Case Preview Modal */}
         {selectedCase && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-gray-800 rounded-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="bg-gray-800 rounded-lg max-w-4xl w-full max-h-[80vh] overflow-y-auto">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-white">{selectedCase.name}</h2>
+                  <div className="flex items-center space-x-3">
+                    <div className="text-3xl">{gameConfigs[selectedCase.game]?.mascot}</div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-white">{selectedCase.name}</h2>
+                      <p className="text-gray-400">{gameConfigs[selectedCase.game]?.name}</p>
+                    </div>
+                  </div>
                   <Button 
                     variant="ghost" 
                     size="sm"
@@ -178,16 +255,18 @@ const Cases = () => {
 
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white">Contains {selectedCase.items.length} items</h3>
-                    <Badge className="bg-green-500 text-white text-lg px-3 py-1">
-                      ${selectedCase.price}
+                    <h3 className="text-lg font-semibold text-white">
+                      Contains {selectedCase.items.length} items
+                    </h3>
+                    <Badge className="bg-orange-500 text-white text-lg px-4 py-2">
+                      {selectedCase.price.toLocaleString()}₽
                     </Badge>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
                   {selectedCase.items.map((item, index) => (
-                    <div key={index} className="bg-gray-700 rounded-lg p-3">
+                    <div key={index} className={`bg-gray-700 rounded-lg p-3 ${getRarityColor(item.rarity)}`}>
                       <div className="flex items-center space-x-3">
                         <img 
                           src={item.image} 
@@ -195,12 +274,12 @@ const Cases = () => {
                           className="w-12 h-12 rounded object-cover"
                         />
                         <div className="flex-1">
-                          <h4 className={`font-medium ${getRarityColor(item.rarity)}`}>
+                          <h4 className="font-medium text-white text-sm truncate">
                             {item.name}
                           </h4>
                           <div className="flex items-center justify-between">
-                            <span className="text-xs text-gray-400 capitalize">{item.rarity}</span>
-                            <span className="text-green-400 font-semibold">${item.value}</span>
+                            <span className="text-xs capitalize">{item.rarity}</span>
+                            <span className="text-orange-400 font-semibold">{item.value}₽</span>
                           </div>
                         </div>
                       </div>
@@ -216,16 +295,15 @@ const Cases = () => {
                   >
                     Close
                   </Button>
-                  <Button 
-                    onClick={() => {
-                      handleOpenCase(selectedCase);
-                      setSelectedCase(null);
-                    }}
-                    className="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700"
-                  >
-                    <Package className="w-4 h-4 mr-2" />
-                    Open Case - ${selectedCase.price}
-                  </Button>
+                  <Link to={`/case/${selectedCase.id}`} className="flex-1">
+                    <Button 
+                      onClick={() => setSelectedCase(null)}
+                      className="w-full bg-orange-500 hover:bg-orange-600"
+                    >
+                      <Package className="w-4 h-4 mr-2" />
+                      Open Case - {selectedCase.price.toLocaleString()}₽
+                    </Button>
+                  </Link>
                 </div>
               </div>
             </div>
