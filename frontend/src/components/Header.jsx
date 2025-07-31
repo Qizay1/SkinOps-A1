@@ -10,7 +10,6 @@ import {
   DropdownMenuTrigger 
 } from './ui/dropdown-menu';
 import { 
-  Sword, 
   Package, 
   Trophy,
   User,
@@ -18,9 +17,12 @@ import {
   Settings,
   LogOut,
   Menu,
-  X
+  X,
+  Gamepad2,
+  Plus,
+  Gift
 } from 'lucide-react';
-import { mockUserStats } from '../mock';
+import { mockUser } from '../mock';
 
 const Header = () => {
   const location = useLocation();
@@ -28,8 +30,8 @@ const Header = () => {
 
   const navItems = [
     { name: 'Home', path: '/', icon: null },
-    { name: 'Battles', path: '/battles', icon: Sword },
-    { name: 'Cases', path: '/cases', icon: Package },
+    { name: 'Games', path: '/games', icon: Gamepad2 },
+    { name: 'All Cases', path: '/cases', icon: Package },
     { name: 'Leaderboard', path: '/leaderboard', icon: Trophy },
   ];
 
@@ -38,15 +40,15 @@ const Header = () => {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-gray-800 border-b border-gray-700">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-gray-900/95 backdrop-blur border-b border-gray-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <Sword className="w-5 h-5 text-white" />
+          <Link to="/" className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+              <Package className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-white">CaseBattle</span>
+            <span className="text-xl font-bold text-white">SkinOps</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -57,8 +59,8 @@ const Header = () => {
                 to={item.path}
                 className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   isActive(item.path)
-                    ? 'text-blue-400 bg-blue-400/10'
-                    : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                    ? 'text-orange-400 bg-orange-400/10'
+                    : 'text-gray-300 hover:text-white hover:bg-gray-800'
                 }`}
               >
                 {item.icon && <item.icon className="w-4 h-4" />}
@@ -70,23 +72,39 @@ const Header = () => {
           {/* User Section */}
           <div className="flex items-center space-x-4">
             {/* Balance */}
-            <div className="hidden sm:flex items-center space-x-2 bg-gray-700 px-3 py-1 rounded-lg">
-              <Wallet className="w-4 h-4 text-green-400" />
-              <span className="text-green-400 font-semibold">${mockUserStats.balance}</span>
+            <div className="hidden sm:flex items-center space-x-2 bg-gray-800 px-3 py-1 rounded-lg border border-gray-700">
+              <Wallet className="w-4 h-4 text-orange-400" />
+              <span className="text-orange-400 font-semibold">{mockUser.balance.toLocaleString()}₽</span>
             </div>
+
+            {/* Deposit Button */}
+            <Link to="/payment">
+              <Button size="sm" className="hidden sm:flex bg-orange-500 hover:bg-orange-600 text-white">
+                <Plus className="w-4 h-4 mr-1" />
+                Deposit
+              </Button>
+            </Link>
+
+            {/* Welcome Case (if available) */}
+            {mockUser.hasWelcomeCase && (
+              <Button size="sm" variant="outline" className="hidden sm:flex border-orange-500 text-orange-400 hover:bg-orange-500 hover:text-white">
+                <Gift className="w-4 h-4 mr-1" />
+                Gift
+              </Button>
+            )}
 
             {/* User Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center space-x-2 p-1">
+                <Button variant="ghost" className="flex items-center space-x-2 p-1 hover:bg-gray-800">
                   <Avatar className="w-8 h-8">
-                    <AvatarImage src={mockUserStats.avatar} />
-                    <AvatarFallback>{mockUserStats.username[0]}</AvatarFallback>
+                    <AvatarImage src={mockUser.avatar} />
+                    <AvatarFallback>{mockUser.username[0]}</AvatarFallback>
                   </Avatar>
                   <div className="hidden sm:block text-left">
-                    <div className="text-sm font-medium text-white">{mockUserStats.username}</div>
-                    <Badge variant="secondary" className="text-xs">
-                      {mockUserStats.rank} - Level {mockUserStats.level}
+                    <div className="text-sm font-medium text-white">{mockUser.username}</div>
+                    <Badge variant="outline" className="text-xs border-orange-500 text-orange-400">
+                      Level {mockUser.level}
                     </Badge>
                   </div>
                 </Button>
@@ -102,6 +120,12 @@ const Header = () => {
                   <Link to="/inventory" className="flex items-center space-x-2">
                     <Package className="w-4 h-4" />
                     <span>Inventory</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/payment" className="flex items-center space-x-2">
+                    <Wallet className="w-4 h-4" />
+                    <span>Payments</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem className="flex items-center space-x-2">
@@ -129,7 +153,7 @@ const Header = () => {
 
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <nav className="md:hidden py-4 border-t border-gray-700">
+          <nav className="md:hidden py-4 border-t border-gray-800">
             <div className="space-y-2">
               {navItems.map((item) => (
                 <Link
@@ -137,8 +161,8 @@ const Header = () => {
                   to={item.path}
                   className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     isActive(item.path)
-                      ? 'text-blue-400 bg-blue-400/10'
-                      : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                      ? 'text-orange-400 bg-orange-400/10'
+                      : 'text-gray-300 hover:text-white hover:bg-gray-800'
                   }`}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
@@ -146,10 +170,18 @@ const Header = () => {
                   <span>{item.name}</span>
                 </Link>
               ))}
-              <div className="px-3 py-2 border-t border-gray-700 mt-2 pt-2">
-                <div className="flex items-center space-x-2 text-green-400">
-                  <Wallet className="w-4 h-4" />
-                  <span className="font-semibold">Balance: ${mockUserStats.balance}</span>
+              <div className="px-3 py-2 border-t border-gray-800 mt-2 pt-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 text-orange-400">
+                    <Wallet className="w-4 h-4" />
+                    <span className="font-semibold">{mockUser.balance.toLocaleString()}₽</span>
+                  </div>
+                  <Link to="/payment">
+                    <Button size="sm" className="bg-orange-500 hover:bg-orange-600">
+                      <Plus className="w-4 h-4 mr-1" />
+                      Deposit
+                    </Button>
+                  </Link>
                 </div>
               </div>
             </div>
